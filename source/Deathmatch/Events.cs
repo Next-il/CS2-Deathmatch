@@ -60,6 +60,7 @@ namespace Deathmatch
 				}
 				blockedSpawns.Remove(player.Slot);
 				Hud?.OnPlayerDisconnect(player.Slot);
+				DamageHud?.Forget(player.Slot);
 				playersWaitingForRespawn.Remove(player);
 				playersWithSpawnProtection.Remove(player);
 			}
@@ -80,6 +81,8 @@ namespace Deathmatch
 				if (Config.SpawnSystem.SpawnsMethod != 2 && CheckedEnemiesDistance > 100 && GameRules?.WarmupPeriod == false)
 					PerformRespawn(player, player.Team);
 
+				// The death card stays until the respawn
+				DamageHud?.Hide(player);
 				GivePlayerWeapons(player, false);
 			}
 
@@ -112,7 +115,11 @@ namespace Deathmatch
 
 					if (attacker != null && attacker.IsValid && attacker != player && GetPrefsValue(data, "DamageInfo", Config.PlayersPreferences.DamageInfo.DefaultValue))
 					{
-						if (data.DamageInfo.TryGetValue(attacker.Slot, out var damageInfo))
+						if (ShowDamageCard(player, data, attacker, @event))
+						{
+							// The death card (Functions/DamageCard.cs) says it instead of the chat line
+						}
+						else if (data.DamageInfo.TryGetValue(attacker.Slot, out var damageInfo))
 						{
 							var givenDamageMessage = Localizer["Chat.GivenDamageVictim", attacker.PlayerName, damageInfo.Damage, damageInfo.Hits];
 							if (!string.IsNullOrEmpty(givenDamageMessage))

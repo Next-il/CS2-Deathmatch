@@ -142,6 +142,10 @@ public class HudSettings
     // Mode id -> the weapon on its banner, e.g. { "1": "weapon_ak47" }. Without one: the AK-47 if the mode
     // has it, else its first primary, else its first secondary, else the knife.
     [JsonPropertyName("Mode Icons")] public Dictionary<string, string> ModeIcons { get; set; } = new();
+    // The death card (Services/DamageHud.cs, K4-DamageInfo's damage_hud layout in the workshop addon):
+    // "Killed by X" and one damage line instead of the victim's "You dealt ... damage" chat line. Off, or
+    // Enabled off = the chat line. Turn it off on a server where K4-DamageInfo's own card is on.
+    [JsonPropertyName("Damage Card")] public bool DamageCard { get; set; } = true;
 }
 
 public class SpawnSystem

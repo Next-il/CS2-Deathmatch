@@ -41,6 +41,11 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         if (Config.Hud.Enabled)
             Hud.Init();
 
+        // The death card, the same way: one entity for the plugin's life
+        DamageHud = new Services.DamageHud(this);
+        if (Config.Hud.Enabled && Config.Hud.DamageCard)
+            DamageHud.Init();
+
         if (Config.SaveWeapons)
             _ = CreateDatabaseConnection();
 
@@ -60,10 +65,11 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         AddCommandListener("autobuy", OnRandomWeapons);
 
         bool mapLoaded = false;
-        RegisterListener<OnMapEnd>(() => { mapLoaded = false; Hud?.Reset(); });
+        RegisterListener<OnMapEnd>(() => { mapLoaded = false; Hud?.Reset(); DamageHud?.Clear(); });
         RegisterListener<OnMapStart>(mapName =>
         {
             Hud?.Reset();
+            DamageHud?.Clear();
             blockedSpawns.Clear();
             savedSpawnsModel.Clear();
             playerData.Clear();
@@ -219,6 +225,9 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         });
         RegisterListener<OnTick>(() =>
         {
+            // The death card's entry and exit steps; first, so the hud switch cannot stop a card halfway
+            DamageHud?.Tick();
+
             if (VisibleHud)
             {
                 foreach (var p in Utilities.GetPlayers())
@@ -340,6 +349,7 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         // VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Unhook(OnTakeDamage, HookMode.Pre);
 		RemoveListener<OnEntityTakeDamagePre>(OnEntityTakeDamagePre);
         Hud?.Dispose();
+        DamageHud?.Dispose();
     }
 
     public void SetupCustomMode(string modeId)
