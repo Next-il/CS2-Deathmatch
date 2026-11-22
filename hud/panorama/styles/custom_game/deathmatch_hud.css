@@ -1,0 +1,211 @@
+/*
+    deathmatch_hud - the Deathmatch mode-change banner. Include hud_shared.vcss_c first.
+
+    Ported 1:1 from the approved review page (HudMenu previews/more, "Round types" tab, Deathmatch):
+    the .rb banner with the .m-dm accent, at top 78px. Every size here is that page's 1080p pixel.
+
+    One card at the top center. Ten seconds before a mode change it shows the weapon, NEXT MODE, the
+    mode's name and a side block IN + the seconds left; when the mode starts it swaps to NEW MODE and
+    how long the mode lasts, for 4 seconds. It slides down with a fade and a blur, and leaves the same
+    way when "show" comes off.
+
+    UNVERIFIED IN GAME, each with a harmless failure:
+      - blur in transition-property: if blur does not animate, the card is simply sharp at once.
+      - the countdown pop (@keyframes): without it the number still changes, just without the pop.
+    All art is CS2's own (icons/equipment/*), tinted with wash-color. Nothing new ships in the addon.
+*/
+
+/* ------------------------------------------------------------------ root */
+
+/* Opened once per player and left open; the banner carries its own "show". */
+.dm-root {
+    width: 100%;
+    height: 100%;
+    visibility: collapse;
+}
+.dm-root.show { visibility: visible; }
+
+/* ------------------------------------------------------------------ card */
+
+.dm-card {
+    world-blur: gaussian(8.0);
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#12171ee2), to(#0b0f14ec));
+    opacity: 0;
+    blur: gaussian(7.0);
+    transition-property: opacity, transform, blur;
+    transition-duration: 0.3s, 0.34s, 0.3s;
+    transition-timing-function: ease-out, cubic-bezier( 0.2, 0.8, 0.25, 1.0 ), ease-out;
+}
+/* Entering is quicker than leaving: the transition on the state being entered is the one that plays. */
+.dm-card.show {
+    opacity: 1;
+    blur: gaussian(0.0);
+    transition-duration: 0.18s, 0.22s, 0.18s;
+}
+
+/* ------------------------------------------------------------------ mode change banner */
+
+.dm-rb {
+    horizontal-align: center;
+    vertical-align: top;
+    margin-top: 78px;
+    flow-children: right;
+    padding: 8px 16px 9px 14px;
+    border-top: 2px solid #4caf6d;
+    transform: translateY(-36px);
+}
+.dm-rb.show { transform: translateY(0px); }
+
+/* An 80 x 26 slot; the art inside is sized to its own viewBox, so it is contained and centred. */
+.dm-rb-wpn {
+    width: 80px;
+    height: 26px;
+    vertical-align: center;
+    margin-right: 12px;
+}
+.dm-rb-art {
+    horizontal-align: center;
+    vertical-align: center;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    wash-color: #d7dce1;
+}
+
+/* The full height of the text block, which the review page stretches it to. */
+.dm-rb-sep {
+    width: 1px;
+    height: 52px;
+    vertical-align: center;
+    margin-right: 12px;
+    background-color: #ffffff16;
+}
+
+/* A weapon the palette does not have: no icon and no separator, the text starts at the edge. */
+.dm-rb.no-wpn .dm-rb-wpn,
+.dm-rb.no-wpn .dm-rb-sep { visibility: collapse; }
+
+.dm-rb-text {
+    flow-children: down;
+    vertical-align: center;
+}
+.dm-rb-eyebrow {
+    font-family: Stratum2 Mono;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1.8px;
+    line-height: 12px;
+    color: #4caf6d;
+    text-transform: uppercase;
+}
+.dm-rb-title {
+    font-family: Stratum2 Medium Condensed;
+    font-size: 23px;
+    font-weight: bold;
+    letter-spacing: 0.7px;
+    line-height: 24.15px;
+    color: #ffffff;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
+.dm-rb-sub {
+    font-family: Stratum2 Regular;
+    font-size: 11.5px;
+    line-height: 14px;
+    color: #9aa2ac;
+    margin-top: 1px;
+}
+
+/* The countdown: IN over the seconds, behind a hairline, as tall as the text block. */
+.dm-rb-side {
+    height: 52px;
+    vertical-align: center;
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid #ffffff16;
+}
+.dm-rb-side-in {
+    flow-children: down;
+    horizontal-align: center;
+    vertical-align: center;
+}
+.dm-rb-side-k {
+    font-family: Stratum2 Mono;
+    font-size: 8.5px;
+    font-weight: bold;
+    letter-spacing: 1.4px;
+    line-height: 12px;
+    color: #6c747d;
+    text-transform: uppercase;
+    horizontal-align: center;
+}
+.dm-rb-side-v {
+    font-family: Stratum2 Medium Condensed;
+    font-size: 27px;
+    font-weight: bold;
+    line-height: 29px;
+    color: #4caf6d;
+    horizontal-align: center;
+}
+
+/* The pop on every new second. Restarts by swapping between two names: removing and re-adding one in
+   a tick sends nothing. */
+@keyframes 'dm-pop-a' { 0% { transform: scale3d(1.18, 1.18, 1.0); } 100% { transform: scale3d(1.0, 1.0, 1.0); } }
+@keyframes 'dm-pop-b' { 0% { transform: scale3d(1.18, 1.18, 1.0); } 100% { transform: scale3d(1.0, 1.0, 1.0); } }
+.dm-rb-side-v.pop-a { animation-name: dm-pop-a; animation-duration: 0.45s; animation-timing-function: ease-out; animation-iteration-count: 1; }
+.dm-rb-side-v.pop-b { animation-name: dm-pop-b; animation-duration: 0.45s; animation-timing-function: ease-out; animation-iteration-count: 1; }
+
+/* ------------------------------------------------------------------ weapon palette */
+
+/*
+    One rule per weapon, the plugin turns on wpn-<name> (weapon_ stripped). Each is the art contained
+    in the 80 x 26 slot: the size comes from the icon's own viewBox (all are 32 tall, 1:1 for the P2000
+    up to 3.4:1 for the AWP), so background-size 100% 100% is exact. background-texture-size is twice
+    the drawn size, or the SVG is rasterized at its file size and the bitmap is stretched.
+
+    Adding a weapon means a new addon build; the plugin hides the icon for one it does not know.
+*/
+.dm-rb-art.wpn-ak47 { width: 71.9px; height: 26px; background-texture-size: 144px 52px; background-image: url("s2r://panorama/images/icons/equipment/ak47.vsvg"); }
+.dm-rb-art.wpn-aug { width: 61.6px; height: 26px; background-texture-size: 124px 52px; background-image: url("s2r://panorama/images/icons/equipment/aug.vsvg"); }
+.dm-rb-art.wpn-awp { width: 80px; height: 23.4px; background-texture-size: 160px 47px; background-image: url("s2r://panorama/images/icons/equipment/awp.vsvg"); }
+.dm-rb-art.wpn-bizon { width: 73.1px; height: 26px; background-texture-size: 147px 52px; background-image: url("s2r://panorama/images/icons/equipment/bizon.vsvg"); }
+.dm-rb-art.wpn-cz75a { width: 38.9px; height: 26px; background-texture-size: 78px 52px; background-image: url("s2r://panorama/images/icons/equipment/cz75a.vsvg"); }
+.dm-rb-art.wpn-deagle { width: 41.2px; height: 26px; background-texture-size: 83px 52px; background-image: url("s2r://panorama/images/icons/equipment/deagle.vsvg"); }
+.dm-rb-art.wpn-elite { width: 55.5px; height: 26px; background-texture-size: 111px 52px; background-image: url("s2r://panorama/images/icons/equipment/elite.vsvg"); }
+.dm-rb-art.wpn-famas { width: 63.2px; height: 26px; background-texture-size: 127px 52px; background-image: url("s2r://panorama/images/icons/equipment/famas.vsvg"); }
+.dm-rb-art.wpn-fiveseven { width: 31.7px; height: 26px; background-texture-size: 64px 52px; background-image: url("s2r://panorama/images/icons/equipment/fiveseven.vsvg"); }
+.dm-rb-art.wpn-g3sg1 { width: 75.8px; height: 26px; background-texture-size: 152px 52px; background-image: url("s2r://panorama/images/icons/equipment/g3sg1.vsvg"); }
+.dm-rb-art.wpn-galilar { width: 73.3px; height: 26px; background-texture-size: 147px 52px; background-image: url("s2r://panorama/images/icons/equipment/galilar.vsvg"); }
+.dm-rb-art.wpn-glock { width: 36.5px; height: 26px; background-texture-size: 73px 52px; background-image: url("s2r://panorama/images/icons/equipment/glock.vsvg"); }
+.dm-rb-art.wpn-hkp2000 { width: 26.1px; height: 26px; background-texture-size: 53px 52px; background-image: url("s2r://panorama/images/icons/equipment/hkp2000.vsvg"); }
+.dm-rb-art.wpn-m249 { width: 78.5px; height: 26px; background-texture-size: 157px 52px; background-image: url("s2r://panorama/images/icons/equipment/m249.vsvg"); }
+.dm-rb-art.wpn-m4a1 { width: 63.9px; height: 26px; background-texture-size: 128px 52px; background-image: url("s2r://panorama/images/icons/equipment/m4a1.vsvg"); }
+.dm-rb-art.wpn-m4a1_silencer { width: 78.4px; height: 26px; background-texture-size: 157px 52px; background-image: url("s2r://panorama/images/icons/equipment/m4a1_silencer.vsvg"); }
+.dm-rb-art.wpn-mac10 { width: 36.3px; height: 26px; background-texture-size: 73px 52px; background-image: url("s2r://panorama/images/icons/equipment/mac10.vsvg"); }
+.dm-rb-art.wpn-mag7 { width: 54.8px; height: 26px; background-texture-size: 110px 52px; background-image: url("s2r://panorama/images/icons/equipment/mag7.vsvg"); }
+.dm-rb-art.wpn-mp5sd { width: 61.5px; height: 26px; background-texture-size: 124px 52px; background-image: url("s2r://panorama/images/icons/equipment/mp5sd.vsvg"); }
+.dm-rb-art.wpn-mp7 { width: 39.9px; height: 26px; background-texture-size: 80px 52px; background-image: url("s2r://panorama/images/icons/equipment/mp7.vsvg"); }
+.dm-rb-art.wpn-mp9 { width: 59.8px; height: 26px; background-texture-size: 120px 52px; background-image: url("s2r://panorama/images/icons/equipment/mp9.vsvg"); }
+.dm-rb-art.wpn-negev { width: 66.2px; height: 26px; background-texture-size: 133px 52px; background-image: url("s2r://panorama/images/icons/equipment/negev.vsvg"); }
+.dm-rb-art.wpn-nova { width: 80px; height: 25.5px; background-texture-size: 160px 52px; background-image: url("s2r://panorama/images/icons/equipment/nova.vsvg"); }
+.dm-rb-art.wpn-p250 { width: 30.7px; height: 26px; background-texture-size: 62px 52px; background-image: url("s2r://panorama/images/icons/equipment/p250.vsvg"); }
+.dm-rb-art.wpn-p90 { width: 55.6px; height: 26px; background-texture-size: 112px 52px; background-image: url("s2r://panorama/images/icons/equipment/p90.vsvg"); }
+.dm-rb-art.wpn-revolver { width: 42.7px; height: 26px; background-texture-size: 86px 52px; background-image: url("s2r://panorama/images/icons/equipment/revolver.vsvg"); }
+.dm-rb-art.wpn-sawedoff { width: 68.9px; height: 26px; background-texture-size: 138px 52px; background-image: url("s2r://panorama/images/icons/equipment/sawedoff.vsvg"); }
+.dm-rb-art.wpn-scar20 { width: 79.6px; height: 26px; background-texture-size: 160px 52px; background-image: url("s2r://panorama/images/icons/equipment/scar20.vsvg"); }
+.dm-rb-art.wpn-sg556 { width: 72.9px; height: 26px; background-texture-size: 146px 52px; background-image: url("s2r://panorama/images/icons/equipment/sg556.vsvg"); }
+.dm-rb-art.wpn-ssg08 { width: 80px; height: 25.7px; background-texture-size: 160px 52px; background-image: url("s2r://panorama/images/icons/equipment/ssg08.vsvg"); }
+.dm-rb-art.wpn-tec9 { width: 42.6px; height: 26px; background-texture-size: 86px 52px; background-image: url("s2r://panorama/images/icons/equipment/tec9.vsvg"); }
+.dm-rb-art.wpn-ump45 { width: 67.8px; height: 26px; background-texture-size: 136px 52px; background-image: url("s2r://panorama/images/icons/equipment/ump45.vsvg"); }
+.dm-rb-art.wpn-usp_silencer { width: 56.3px; height: 26px; background-texture-size: 113px 52px; background-image: url("s2r://panorama/images/icons/equipment/usp_silencer.vsvg"); }
+.dm-rb-art.wpn-xm1014 { width: 79.5px; height: 26px; background-texture-size: 160px 52px; background-image: url("s2r://panorama/images/icons/equipment/xm1014.vsvg"); }
+.dm-rb-art.wpn-knife { width: 62.4px; height: 26px; background-texture-size: 125px 52px; background-image: url("s2r://panorama/images/icons/equipment/knife.vsvg"); }
+.dm-rb-art.wpn-knife_t { width: 64.3px; height: 26px; background-texture-size: 129px 52px; background-image: url("s2r://panorama/images/icons/equipment/knife_t.vsvg"); }
+.dm-rb-art.wpn-taser { width: 33.7px; height: 26px; background-texture-size: 68px 52px; background-image: url("s2r://panorama/images/icons/equipment/taser.vsvg"); }
+.dm-rb-art.wpn-hegrenade { width: 19.7px; height: 26px; background-texture-size: 40px 52px; background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); }
+.dm-rb-art.wpn-flashbang { width: 24.4px; height: 26px; background-texture-size: 49px 52px; background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); }
+.dm-rb-art.wpn-smokegrenade { width: 12.2px; height: 26px; background-texture-size: 25px 52px; background-image: url("s2r://panorama/images/icons/equipment/smokegrenade.vsvg"); }
+.dm-rb-art.wpn-molotov { width: 17.9px; height: 26px; background-texture-size: 36px 52px; background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); }
+.dm-rb-art.wpn-incgrenade { width: 12.2px; height: 26px; background-texture-size: 25px 52px; background-image: url("s2r://panorama/images/icons/equipment/incgrenade.vsvg"); }
+.dm-rb-art.wpn-decoy { width: 24.4px; height: 26px; background-texture-size: 49px 52px; background-image: url("s2r://panorama/images/icons/equipment/decoy.vsvg"); }
+.dm-rb-art.wpn-healthshot { width: 35.8px; height: 26px; background-texture-size: 72px 52px; background-image: url("s2r://panorama/images/icons/equipment/healthshot.vsvg"); }

@@ -128,6 +128,20 @@ public class DeathmatchConfig : BasePluginConfig
         }
     };
     [JsonPropertyName("Weapons Restrict")] public WeaponsRestrict RestrictedWeapons { get; set; } = new WeaponsRestrict();
+    [JsonPropertyName("Hud")] public HudSettings Hud { get; set; } = new HudSettings();
+}
+
+// The mode-change banner (Services/HudService.cs, hud/panorama/.../deathmatch_hud.xml in the workshop addon).
+// Missing from a config file = the defaults below; the plugin never writes the file, since a mounted
+// config is shared by every server on a node.
+public class HudSettings
+{
+    // Off = the old "New mode starts in ..." / "A new mode has started!" center lines and the
+    // "Starting a new mode type ..." chat line. Needs the addon build that carries deathmatch_hud.
+    [JsonPropertyName("Enabled")] public bool Enabled { get; set; } = true;
+    // Mode id -> the weapon on its banner, e.g. { "1": "weapon_ak47" }. Without one: the AK-47 if the mode
+    // has it, else its first primary, else its first secondary, else the knife.
+    [JsonPropertyName("Mode Icons")] public Dictionary<string, string> ModeIcons { get; set; } = new();
 }
 
 public class SpawnSystem

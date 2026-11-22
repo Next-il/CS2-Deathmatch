@@ -36,6 +36,11 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         // VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(OnTakeDamage, HookMode.Pre);
 		RegisterListener<OnEntityTakeDamagePre>(OnEntityTakeDamagePre);
 
+        // The mode-change banner. Spawned once: the library keeps the panel alive across rounds and maps
+        Hud = new Services.HudService(this);
+        if (Config.Hud.Enabled)
+            Hud.Init();
+
         if (Config.SaveWeapons)
             _ = CreateDatabaseConnection();
 
@@ -55,9 +60,10 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         AddCommandListener("autobuy", OnRandomWeapons);
 
         bool mapLoaded = false;
-        RegisterListener<OnMapEnd>(() => { mapLoaded = false; });
+        RegisterListener<OnMapEnd>(() => { mapLoaded = false; Hud?.Reset(); });
         RegisterListener<OnMapStart>(mapName =>
         {
+            Hud?.Reset();
             blockedSpawns.Clear();
             savedSpawnsModel.Clear();
             playerData.Clear();
@@ -148,7 +154,11 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
 
                                     if (RemainingTime <= Config.Gameplay.NewModeCountdown && Config.Gameplay.NewModeCountdown > 0)
                                     {
-                                        if (RemainingTime == 0)
+                                        if (Hud is { Enabled: true })
+                                        {
+                                            // The mode banner (Services/HudService.cs) shows the countdown and the new mode instead
+                                        }
+                                        else if (RemainingTime == 0)
                                         {
                                             if (Config.Gameplay.HudType == 0)
                                                 p.PrintToCenter($"{Localizer["Hud.NewModeStarted"]}");
@@ -200,6 +210,7 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
                                     ModeCenterMessage = ActiveMode.CenterMessageText.Replace("{REMAININGTIME}", formattedTime);
                                     ModeCenterMessage = ModeCenterMessage.Replace("{NEXTMODE}", modeData.Name);
                                 }
+                                UpdateModeBanner();
                             }
                         }
                     }
@@ -220,7 +231,11 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
 
                     if (RemainingTime <= Config.Gameplay.NewModeCountdown && Config.Gameplay.NewModeCountdown > 0)
                     {
-                        if (RemainingTime == 0)
+                        if (Hud is { Enabled: true })
+                        {
+                            // The mode banner (Services/HudService.cs) shows the countdown and the new mode instead
+                        }
+                        else if (RemainingTime == 0)
                         {
                             if (Config.Gameplay.HudType == 1)
                                 p.PrintToCenterHtml($"{Localizer["Hud.NewModeStarted"]}");
@@ -324,6 +339,7 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         VirtualFunctions.CCSPlayer_ItemServices_CanAcquireFunc.Unhook(OnWeaponCanAcquire, HookMode.Pre);
         // VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Unhook(OnTakeDamage, HookMode.Pre);
 		RemoveListener<OnEntityTakeDamagePre>(OnEntityTakeDamagePre);
+        Hud?.Dispose();
     }
 
     public void SetupCustomMode(string modeId)
@@ -354,7 +370,18 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         ModeTimer = 0;
 
         if (isNewMode)
-            Server.PrintToChatAll($"{Localizer["Chat.Prefix"]} {Localizer["Chat.NewModeStarted", mode.Name]}");
+        {
+            var line = $"{Localizer["Chat.Prefix"]} {Localizer["Chat.NewModeStarted", mode.Name]}";
+            if (Hud is { Enabled: true })
+            {
+                // The banner for everyone who sees hud messages, the chat line for the rest
+                var shown = Hud.ModeStarted(ModeIcon(ActiveCustomMode, mode), mode.Name, NextChangeText(mode), SeesModeBanner);
+                foreach (var p in Utilities.GetPlayers().Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false } && !shown.Contains(p.Slot)))
+                    p.PrintToChat(line);
+            }
+            else
+                Server.PrintToChatAll(line);
+        }
 
         Server.ExecuteCommand($"mp_free_armor {mode.Armor};mp_damage_headshot_only {mode.OnlyHS};mp_ct_default_primary \"\";mp_t_default_primary \"\";mp_ct_default_secondary \"\";mp_t_default_secondary \"\"");
 

@@ -1,17 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- net10.0 and CounterStrikeSharp 1.0.374+ because PanoramaManager needs both; servers run CSS on .NET 10 -->
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.365" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.375" />
     <PackageReference Include="MysqlConnector" Version="2.3.7" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- The mode-change banner (Services/HudService.cs). Loads from the plugin's own folder, so the dll ships
+         next to Deathmatch.dll. Same version as our other HUD plugins. -->
+    <PackageReference Include="PanoramaManager" Version="0.4.3" />
     <ProjectReference Include="..\DeathmatchAPI\DeathmatchAPI.csproj" />
   </ItemGroup>
+
+  <!-- A class library does not copy package dlls on build. The release workflow builds with
+       CopyLocalLockFileAssemblies=true, which copies them all; a plain local build copies PanoramaManager only. -->
+  <Target Name="CopyPanoramaManager" AfterTargets="ResolveLockFileCopyLocalFiles" Condition=" '$(CopyLocalLockFileAssemblies)' != 'true' ">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Include="@(RuntimeCopyLocalItems)"
+                               Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'PanoramaManager'" />
+    </ItemGroup>
+  </Target>
 
 </Project>

@@ -32,9 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The plugin targets net10.0 (PanoramaManager needs it); the same SDK builds DeathmatchAPI's net8.0
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       # CopyLocalLockFileAssemblies puts MySqlConnector and Newtonsoft.Json in the output - the plugin
       # loads both from its own folder. It copies CounterStrikeSharp's dependencies too, which the
@@ -49,6 +50,8 @@ jobs:
           set -e
           mkdir -p "out/$PLUGIN/lang" "out/$PLUGIN/spawns" out/shared/DeathmatchAPI
           cp "build-out/$PLUGIN.dll" "build-out/$PLUGIN.deps.json" build-out/MySqlConnector.dll build-out/Newtonsoft.Json.dll "out/$PLUGIN/"
+          # The mode banner's HUD library loads from the plugin's own folder
+          cp build-out/PanoramaManager.dll "out/$PLUGIN/"
           cp Lang/*.json "out/$PLUGIN/lang/"
           cp "Spawns Locations"/*.json "out/$PLUGIN/spawns/"
           cp build-out/DeathmatchAPI.dll out/shared/DeathmatchAPI/
@@ -57,12 +60,13 @@ jobs:
         run: |
           set -e
           test -f "out/$PLUGIN/$PLUGIN.dll"
+          test -f "out/$PLUGIN/PanoramaManager.dll"
           test -f "out/$PLUGIN/lang/en.json"
           test -f out/shared/DeathmatchAPI/DeathmatchAPI.dll
 
           # Stage only copies what it lists. A new package would build fine and then fail to load on
           # the server, so refuse to go on until its dlls are added to Stage.
-          extra=$(grep -oE '<PackageReference Include="[^"]+"' "$PROJECT" | cut -d'"' -f2 | grep -viE '^(CounterStrikeSharp.API|MySqlConnector|Newtonsoft.Json)$' || true)
+          extra=$(grep -oE '<PackageReference Include="[^"]+"' "$PROJECT" | cut -d'"' -f2 | grep -viE '^(CounterStrikeSharp.API|MySqlConnector|Newtonsoft.Json|PanoramaManager)$' || true)
           if [ -n "$extra" ]; then
             echo "::error::Unhandled PackageReference: $extra - add its dlls to the Stage step."
             exit 1

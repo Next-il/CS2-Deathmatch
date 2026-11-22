@@ -1,0 +1,58 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/hud_shared.vcss_c" />
+		<include src="s2r://panorama/styles/custom_game/deathmatch_hud.vcss_c" />
+	</styles>
+
+	<!--
+		Deathmatch HUD - the mode-change banner at the top center.
+
+		  dm_rb   10 s before a mode change: weapon, NEXT MODE, the mode, IN + the seconds left
+		          (was the "New mode starts in 10 seconds!" center hint)
+		          when the mode starts: NEW MODE, the mode, until the next change, for 4 s
+		          (was "Starting a new mode type ..." in chat and "A new mode has started!" in the center)
+
+		NOT INTERACTIVE. hittest false everywhere; the plugin opens it with CaptureInput = false.
+
+		CONTRACT (source/Deathmatch/Services/HudService.cs must match)
+		  RootPanelId  = "DeathmatchRoot"   RevealClass = "show"   RowCount = 0
+		  CaptureInput = false              HideHud = None         SharedText = false
+
+		The root is full-screen and carries nothing visible itself; it is opened once per player and
+		stays open. The banner has its own "show" and slides down from the top.
+
+		DIALOG VARIABLES
+		  dm_rb_eyebrow dm_rb_title dm_rb_sub dm_rb_side_k dm_rb_side_v
+
+		CLASSES THE SERVER TOGGLES
+		  dm_rb         show | no-wpn
+		  dm_rb_art     wpn-<weapon>             (one of the palette in deathmatch_hud.css)
+		  dm_rb_sub     hidden
+		  dm_rb_side    hidden                   (the countdown block, off for "New mode")
+		  dm_rb_side_v  pop-a pop-b              (ping-pong to restart the pop every second)
+	-->
+	<Panel class="hud-screen" hittest="false">
+		<Panel id="DeathmatchRoot" class="dm-root" hittest="false">
+
+			<!-- ======================================================= mode change banner -->
+			<Panel id="dm_rb" class="dm-card dm-rb" hittest="false">
+				<Panel class="dm-rb-wpn" hittest="false">
+					<Panel id="dm_rb_art" class="dm-rb-art" hittest="false" />
+				</Panel>
+				<Panel class="dm-rb-sep" hittest="false" />
+				<Panel class="dm-rb-text" hittest="false">
+					<Label class="dm-rb-eyebrow" text="{s:dm_rb_eyebrow}" hittest="false" />
+					<Label class="dm-rb-title" text="{s:dm_rb_title}" hittest="false" />
+					<Label id="dm_rb_sub" class="dm-rb-sub" text="{s:dm_rb_sub}" hittest="false" />
+				</Panel>
+				<Panel id="dm_rb_side" class="dm-rb-side hidden" hittest="false">
+					<Panel class="dm-rb-side-in" hittest="false">
+						<Label class="dm-rb-side-k" text="{s:dm_rb_side_k}" hittest="false" />
+						<Label id="dm_rb_side_v" class="dm-rb-side-v" text="{s:dm_rb_side_v}" hittest="false" />
+					</Panel>
+				</Panel>
+			</Panel>
+
+		</Panel>
+	</Panel>
+</root>
