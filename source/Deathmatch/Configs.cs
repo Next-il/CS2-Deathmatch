@@ -146,6 +146,10 @@ public class HudSettings
     // "Killed by X" and one damage line instead of the victim's "You dealt ... damage" chat line. Off, or
     // Enabled off = the chat line. Turn it off on a server where K4-DamageInfo's own card is on.
     [JsonPropertyName("Damage Card")] public bool DamageCard { get; set; } = true;
+    // The mouse menu (Services/MenuHud.cs, hud/panorama/.../deathmatch_menu.xml in the workshop addon): !gun with no
+    // weapon name, !dm and the spawns editor. Off, or Enabled off = the old center menus and the chat weapon list.
+    // Needs the addon build that carries deathmatch_menu.
+    [JsonPropertyName("Menu")] public bool Menu { get; set; } = true;
 }
 
 public class SpawnSystem

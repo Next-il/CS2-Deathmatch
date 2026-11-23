@@ -39,13 +39,18 @@ namespace Deathmatch
                         if (player == null || !player.IsValid)
                             return;
 
+                        // No weapon name: the menu's Weapons tab (it says so itself in a random-weapons mode),
+                        // or the chat list when the HUD menu is off
+                        string weaponName = info.GetArg(1).ToLower();
+                        if (string.IsNullOrEmpty(weaponName) && OpenWeaponsMenu(player))
+                            return;
+
                         if (ActiveMode.RandomWeapons)
                         {
                             info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponsSelectIsDisabled"]}");
                             return;
                         }
 
-                        string weaponName = info.GetArg(1).ToLower();
                         SetupPlayerWeapons(player, weaponName, info);
                     });
                     break;
@@ -53,6 +58,10 @@ namespace Deathmatch
                     AddCommand(cmdName, "Opens a Deathmatch menu", (player, info) =>
                     {
                         if (player == null || !player.IsValid || !playerData.ContainsKey(player.Slot))
+                            return;
+
+                        // The menu's Settings tab; the center menus below when the HUD menu is off
+                        if (OpenSettingsMenu(player))
                             return;
 
                         if (!Menu.GetAllOptions().Any())
@@ -164,7 +173,7 @@ namespace Deathmatch
                 info.ReplyToCommand($"{Localizer["Chat.Prefix"]} You have to be alive to use Spawns Editor!");
                 return;
             }
-            OpenEditorMenu(player);
+            OpenSpawnsEditor(player);
         }
 
         /*[ConsoleCommand("css_test", "")]

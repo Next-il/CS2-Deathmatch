@@ -61,6 +61,7 @@ namespace Deathmatch
 				blockedSpawns.Remove(player.Slot);
 				Hud?.OnPlayerDisconnect(player.Slot);
 				DamageHud?.Forget(player.Slot);
+				ForgetMenu(player.Slot);
 				playersWaitingForRespawn.Remove(player);
 				playersWithSpawnProtection.Remove(player);
 			}

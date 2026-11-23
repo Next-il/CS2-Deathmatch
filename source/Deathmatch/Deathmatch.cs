@@ -46,6 +46,11 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
         if (Config.Hud.Enabled && Config.Hud.DamageCard)
             DamageHud.Init();
 
+        // The mouse menu (!gun, !dm, the spawns editor), the same way; redrawn once a second while open for the
+        // mode timer and the weapon counts
+        InitMenuHud();
+        AddTimer(1.0f, RedrawMenus, TimerFlags.REPEAT);
+
         if (Config.SaveWeapons)
             _ = CreateDatabaseConnection();
 
@@ -155,7 +160,7 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
                                     if (!playerData.TryGetValue(p.Slot, out var data))
                                         continue;
 
-                                    if ((Config.PlayersPreferences.HudMessages.Enabled && !GetPrefsValue(data, "HudMessages", Config.PlayersPreferences.HudMessages.DefaultValue)) || MenuManager.GetActiveMenu(p) != null)
+                                    if ((Config.PlayersPreferences.HudMessages.Enabled && !GetPrefsValue(data, "HudMessages", Config.PlayersPreferences.HudMessages.DefaultValue)) || MenuManager.GetActiveMenu(p) != null || MenuOpenFor(p))
                                         continue;
 
                                     if (RemainingTime <= Config.Gameplay.NewModeCountdown && Config.Gameplay.NewModeCountdown > 0)
@@ -235,7 +240,7 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
                     if (!playerData.TryGetValue(p.Slot, out var data))
                         continue;
 
-                    if ((Config.PlayersPreferences.HudMessages.Enabled && !GetPrefsValue(data, "HudMessages", Config.PlayersPreferences.HudMessages.DefaultValue)) || MenuManager.GetActiveMenu(p) != null)
+                    if ((Config.PlayersPreferences.HudMessages.Enabled && !GetPrefsValue(data, "HudMessages", Config.PlayersPreferences.HudMessages.DefaultValue)) || MenuManager.GetActiveMenu(p) != null || MenuOpenFor(p))
                         continue;
 
                     if (RemainingTime <= Config.Gameplay.NewModeCountdown && Config.Gameplay.NewModeCountdown > 0)
@@ -350,6 +355,7 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
 		RemoveListener<OnEntityTakeDamagePre>(OnEntityTakeDamagePre);
         Hud?.Dispose();
         DamageHud?.Dispose();
+        MenuHud?.Dispose();
     }
 
     public void SetupCustomMode(string modeId)
@@ -419,6 +425,9 @@ public partial class Deathmatch : BasePlugin, IPluginConfig<DeathmatchConfig>
             if (Config.Gameplay.RespawnPlayersAtNewMode)
                 p.Respawn();
         }
+
+        // An open menu shows the new mode's weapons and rules at once
+        RedrawMenus();
     }
     public void LoadCustomConfigFile()
     {

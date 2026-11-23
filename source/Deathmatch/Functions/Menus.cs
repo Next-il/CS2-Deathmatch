@@ -149,7 +149,8 @@ namespace Deathmatch
             FunctionsMenu();
             if (Config.General.DisplayZonesEditorInMenu)
             {
-                Menu.AddOption("Spawns Editor", null, (player, option) =>
+                // The HUD menu has a Spawns tab instead, so it leaves this option out (Functions/HudMenus.cs)
+                Menu.AddOption(SpawnsEditorOption, null, (player, option) =>
                 {
                     if (Config.SpawnSystem.SpawnsMethod != 0)
                     {
@@ -161,7 +162,7 @@ namespace Deathmatch
                         player.PrintToChat($"{Localizer["Chat.Prefix"]} You have to be alive to use Spawns Editor!");
                         return;
                     }
-                    OpenEditorMenu(player);
+                    OpenSpawnsEditor(player);
                 }, "@css/root");
             }
         }

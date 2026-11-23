@@ -1,0 +1,740 @@
+/*
+    deathmatch_menu - !gun, !dm and the spawns editor as one mouse menu. Include hud_shared.vcss_c first.
+
+    The family's menu card (the /rank menu, the round picker): 760px wide in the middle of the screen, the
+    shared card level (#12171ec6 to #0b0f14d0) behind it, square corners, fill-only tiles and buttons, a
+    48px header, a tab bar with a sliding underline, the X top right. The accent is Deathmatch's green
+    (#4caf6d), the same as the mode banner's (deathmatch_hud.css).
+
+      Weapons    the mode's rules as chips, then its primaries and secondaries as tiles with CS2's own art.
+                 The saved choice has the green edge; a weapon over its limit is dimmed with a lock and its
+                 count ("3/3"); a limited one shows its count ("1/3"). Only what the current mode allows.
+      Settings   the preferences (Sounds, Functions, whatever API modules add) as rows with ON / OFF or
+                 option buttons, in two columns, the chat shortcut next to each.
+      Spawns     root admins: the CT / T counts, Add CT, Add T, Remove nearest, Save.
+
+    HEIGHTS. The plugin sizes the body per viewer (bh-8 .. bh-24, 20px a step) from the numbers below, so
+    switching tabs never resizes the card. MenuHud.cs carries the same numbers: change one, change both.
+      weapons    strip 22 + note 24 (when shown) + per section 10 + 18 + 59 a tile row
+      settings   the taller column: first heading 26, a later heading 36, a row 32
+      spawns     56 + 12 + 40 + 12 + 34 = 154
+      body       content + 26 (12 top, 14 bottom)
+
+    UNVERIFIED IN GAME, each with a harmless failure:
+      - min-width on the option buttons (registered, undocumented): without it they are as wide as the label.
+      - text-overflow shrink on the tile names: a long name is cut with an ellipsis instead.
+    All art is CS2's own (icons/equipment/*, icons/ui/*), tinted with wash-color. Nothing new ships.
+*/
+
+/* ------------------------------------------------------------------ root and card */
+
+/* The full screen; draws nothing. The card carries the reveal. */
+.dmm-root {
+    width: 100%;
+    height: 100%;
+}
+
+.dmm {
+    width: 760px;
+    horizontal-align: center;
+    vertical-align: center;
+    flow-children: down;
+    border-left: 3px solid #4caf6d;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#12171ec6), to(#0b0f14d0));
+
+    opacity: 0;
+    transform: translateY(28px);
+    transition-property: opacity, transform;
+    transition-duration: 0.16s;
+    transition-timing-function: ease-out;
+}
+/* world-blur only while open, so a closing card leaves no blurred rectangle behind */
+.dmm-root.show .dmm {
+    opacity: 1;
+    transform: translateY(0px);
+    world-blur: gaussian(8.0);
+}
+
+.fill { width: fill-parent-flow(1.0); height: 1px; }
+
+/* ------------------------------------------------------------------ header */
+
+.dmm-head {
+    width: 100%;
+    height: 48px;
+    flow-children: right;
+    padding: 0px 12px 0px 16px;
+    border-bottom: 1px solid #ffffff0f;
+}
+.dmm-title {
+    width: fit-children;
+    vertical-align: center;
+    font-family: Stratum2 Medium Condensed;
+    font-size: 19px;
+    font-weight: bold;
+    letter-spacing: 1.8px;
+    color: #ffffff;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-tag {
+    width: fit-children;
+    vertical-align: center;
+    margin-left: 12px;
+    font-family: Stratum2 Mono;
+    font-size: 11px;
+    color: #61686f;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* MODE <name>, then NEXT <name> · 2:31 */
+.dmm-now {
+    width: fit-children;
+    vertical-align: center;
+    flow-children: right;
+    margin-right: 16px;
+}
+.dmm-now-k {
+    vertical-align: bottom;
+    margin: 0px 7px 2px 0px;
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    letter-spacing: 1.4px;
+    color: #61686f;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-now-v {
+    vertical-align: bottom;
+    font-family: Stratum2 Medium Condensed;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    color: #4caf6d;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-next .dmm-now-v { color: #8b939c; }
+
+.dmm-x {
+    width: 24px;
+    height: 24px;
+    vertical-align: center;
+    background-color: #ffffff0b;
+    transition-property: background-color;
+    transition-duration: 0.2s;
+}
+.dmm-x:hover { background-color: #ffffff1c; }
+/* No height on the label: vertical-align needs room to centre in */
+.dmm-x-lbl {
+    width: 100%;
+    horizontal-align: center;
+    vertical-align: center;
+    font-size: 11px;
+    color: #aeb5bc;
+    text-align: center;
+}
+
+/* ------------------------------------------------------------------ tabs */
+
+.dmm-tabs {
+    flow-children: right;
+    width: 100%;
+    height: 38px;
+    border-bottom: 1px solid #ffffff0f;
+    overflow: noclip;
+}
+/* Fixed width, so the underline travels by whole tab widths */
+.dmm-tab {
+    width: 150px;
+    height: 100%;
+    transition-property: background-color;
+    transition-duration: 0.12s;
+}
+.dmm-tab:hover { background-color: #ffffff0a; }
+.dmm-tab-lbl {
+    width: 100%;
+    font-family: Stratum2 Medium Condensed;
+    font-size: 14px;
+    color: #8a929b;
+    text-transform: uppercase;
+    text-align: center;
+    vertical-align: center;
+}
+.dmm-tab.active .dmm-tab-lbl { color: #ffffff; }
+
+.dmm-bar {
+    width: 150px;
+    height: 2px;
+    vertical-align: bottom;
+    ignore-parent-flow: true;
+    background-color: #4caf6d;
+    transform: translateX(0px);
+    transition-property: transform;
+    transition-duration: 0.2s;
+    transition-timing-function: ease-out;
+}
+.dmm-bar.at-0 { transform: translateX(0px); }
+.dmm-bar.at-1 { transform: translateX(150px); }
+.dmm-bar.at-2 { transform: translateX(300px); }
+
+/* ------------------------------------------------------------------ body */
+
+/* 16px left, 13px right: the 3px edge is inside the card's 760px, so the content is 728 wide. */
+.dmm-body {
+    width: 100%;
+    height: 466px;
+    padding: 12px 13px 14px 16px;
+    overflow: noclip;
+}
+.dmm-body.bh-8 { height: 186px; }
+.dmm-body.bh-9 { height: 206px; }
+.dmm-body.bh-10 { height: 226px; }
+.dmm-body.bh-11 { height: 246px; }
+.dmm-body.bh-12 { height: 266px; }
+.dmm-body.bh-13 { height: 286px; }
+.dmm-body.bh-14 { height: 306px; }
+.dmm-body.bh-15 { height: 326px; }
+.dmm-body.bh-16 { height: 346px; }
+.dmm-body.bh-17 { height: 366px; }
+.dmm-body.bh-18 { height: 386px; }
+.dmm-body.bh-19 { height: 406px; }
+.dmm-body.bh-20 { height: 426px; }
+.dmm-body.bh-21 { height: 446px; }
+.dmm-body.bh-22 { height: 466px; }
+.dmm-body.bh-23 { height: 486px; }
+.dmm-body.bh-24 { height: 506px; }
+
+.dmm-page {
+    width: 100%;
+    height: 100%;
+    flow-children: down;
+    overflow: noclip;
+    visibility: collapse;
+}
+.dmm-page.active { visibility: visible; }
+
+/* ------------------------------------------------------------------ chips (the mode's rules) */
+
+.dmm-strip {
+    width: 100%;
+    height: 22px;
+    flow-children: right;
+}
+.dmm-chip {
+    width: fit-children;
+    vertical-align: center;
+    margin-right: 4px;
+    padding: 4px 7px 3px 7px;
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    font-weight: bold;
+    letter-spacing: 1.2px;
+    color: #aeb5bd;
+    text-transform: uppercase;
+    white-space: nowrap;
+    background-color: #ffffff0d;
+}
+.dmm-chip.warn { color: #ffb2a6; background-color: #e0432f2e; }
+.dmm-chip.gold { color: #f5c46a; background-color: #f0a53126; }
+
+/* ALSO + the utilities the mode hands out, as CS2's equipment icons */
+.dmm-also {
+    width: fit-children;
+    height: 100%;
+    flow-children: right;
+}
+.dmm-also-k {
+    vertical-align: center;
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    letter-spacing: 1.4px;
+    color: #61686f;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-u {
+    width: 16px;
+    height: 16px;
+    vertical-align: center;
+    margin-left: 9px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    wash-color: #aeb5bd;
+}
+
+.dmm-note {
+    width: 100%;
+    height: 16px;
+    margin-top: 8px;
+    font-family: Stratum2 Regular;
+    font-size: 12.5px;
+    color: #f5c46a;
+    white-space: nowrap;
+    text-overflow: shrink min( 10px ) ellipsis;
+}
+
+/* ------------------------------------------------------------------ weapon sections and tiles */
+
+.dmm-sec {
+    width: 100%;
+    flow-children: down;
+    margin-top: 10px;
+}
+.dmm-sec-head {
+    width: 100%;
+    height: 18px;
+    flow-children: right;
+}
+.dmm-sec-k {
+    vertical-align: center;
+    font-family: Stratum2 Mono;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1.4px;
+    color: #6c747d;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-saved-k {
+    vertical-align: center;
+    margin-right: 7px;
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    letter-spacing: 1.2px;
+    color: #61686f;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-saved {
+    vertical-align: center;
+    font-family: Stratum2 Medium Condensed;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.6px;
+    color: #e7eaee;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* Six a row: 6 x 118 + 5 x 4 = 728 */
+.dmm-row {
+    width: 100%;
+    height: 54px;
+    flow-children: right;
+    margin-top: 5px;
+}
+.dmm-t {
+    width: 118px;
+    height: 54px;
+    margin-left: 4px;
+    background-color: #ffffff07;
+    transition-property: background-color, opacity;
+    transition-duration: 0.2s;
+}
+.dmm-t:first-child { margin-left: 0px; }
+
+/* The green edge: the saved choice, half of it on hover. A 2px panel, not a border. */
+.dmm-t-edge {
+    width: 2px;
+    height: 100%;
+    horizontal-align: left;
+    background-color: #4caf6d;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.2s;
+}
+
+/* Sized per weapon by the w-<weapon> class on the tile (the generated block at the end): every icon is
+   32 tall in its viewBox but 1:1 (P2000) to 3.4:1 (AWP) wide, so each gets its own box at its own aspect,
+   24px tall, and background-size 100% 100% is exact. */
+.dmm-t-art {
+    width: 60px;
+    height: 24px;
+    horizontal-align: center;
+    vertical-align: top;
+    margin-top: 8px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    wash-color: #c3c9cf;
+    opacity: 0.85;
+    transition-property: opacity, wash-color;
+    transition-duration: 0.2s;
+}
+
+.dmm-t-n {
+    width: 100%;
+    vertical-align: bottom;
+    margin-bottom: 6px;
+    padding: 0px 6px 0px 6px;
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    letter-spacing: 0.6px;
+    color: #9aa2ac;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+    text-overflow: shrink min( 7px ) ellipsis;
+}
+
+/* The limit: "1/3", or VIP / OFF when this player cannot take it at all */
+.dmm-t-c {
+    horizontal-align: right;
+    vertical-align: top;
+    margin: 4px 5px 0px 0px;
+    font-family: Stratum2 Mono;
+    font-size: 8.5px;
+    font-weight: bold;
+    color: #7d858e;
+    white-space: nowrap;
+}
+.dmm-t-c.full { color: #ff8270; }
+
+.dmm-t-lock {
+    visibility: collapse;
+    width: 8px;
+    height: 8px;
+    horizontal-align: left;
+    vertical-align: top;
+    margin: 5px 0px 0px 7px;
+    background-image: url("s2r://panorama/images/icons/ui/account_locked.vsvg");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-texture-size: 16px 16px;
+    wash-color: #8b939c;
+}
+
+.dmm-t:hover { background-color: #ffffff10; }
+.dmm-t:hover .dmm-t-edge { opacity: 0.5; }
+.dmm-t:hover .dmm-t-art { opacity: 1; wash-color: #ffffff; }
+
+.dmm-t.sel { background-color: #4caf6d1c; }
+.dmm-t.sel .dmm-t-edge { opacity: 1; }
+.dmm-t.sel .dmm-t-art { opacity: 1; wash-color: #ffffff; }
+.dmm-t.sel .dmm-t-n { color: #ffffff; font-weight: bold; }
+
+/* Over its limit (or not for this player): the plugin refuses the click, so hover does nothing either */
+.dmm-t.locked, .dmm-t.locked:hover { background-color: #ffffff04; }
+.dmm-t.locked .dmm-t-edge, .dmm-t.locked:hover .dmm-t-edge { opacity: 0; }
+.dmm-t.locked .dmm-t-art, .dmm-t.locked:hover .dmm-t-art { opacity: 0.25; wash-color: #c3c9cf; }
+.dmm-t.locked .dmm-t-n { color: #5c646d; }
+.dmm-t.locked .dmm-t-lock { visibility: visible; }
+
+/* Random weapons: the tiles only show what the mode hands out */
+.dmm-pg-w.rand .dmm-t { opacity: 0.5; }
+.dmm-pg-w.rand .dmm-t:hover { background-color: #ffffff07; }
+.dmm-pg-w.rand .dmm-t:hover .dmm-t-edge { opacity: 0; }
+
+/* ------------------------------------------------------------------ settings */
+
+/* Two columns: 356 + 16 + 356 = 728 */
+.dmm-cols {
+    width: 100%;
+    flow-children: right;
+}
+.dmm-col {
+    width: 356px;
+    flow-children: down;
+}
+.dmm-col:first-child { margin-right: 16px; }
+
+.dmm-set {
+    width: 100%;
+    height: 30px;
+    flow-children: right;
+    margin-top: 2px;
+    padding: 0px 4px 0px 10px;
+    background-color: #ffffff05;
+}
+/* A category heading: the label only, on the card itself */
+.dmm-set.kind-head {
+    height: 26px;
+    margin-top: 10px;
+    padding: 0px;
+    background-color: #00000000;
+}
+.dmm-set.kind-head:first-child { margin-top: 0px; }
+
+.dmm-set-k {
+    width: fill-parent-flow(1.0);
+    vertical-align: center;
+    font-family: Stratum2 Mono;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1.2px;
+    color: #aeb5bd;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-overflow: shrink min( 7px ) ellipsis;
+}
+.dmm-set.kind-head .dmm-set-k {
+    vertical-align: bottom;
+    margin-bottom: 5px;
+    letter-spacing: 1.6px;
+    color: #4caf6d;
+}
+
+/* The chat shortcut, "!hs" */
+.dmm-set-sc {
+    width: fit-children;
+    vertical-align: center;
+    margin: 0px 10px 0px 8px;
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    color: #4f565e;
+    white-space: nowrap;
+}
+.dmm-set.kind-head .dmm-set-sc { visibility: collapse; }
+
+.dmm-opts {
+    width: fit-children;
+    vertical-align: center;
+    flow-children: right;
+}
+.dmm-set.kind-head .dmm-opts, .dmm-set.kind-go .dmm-opts { visibility: collapse; }
+
+.dmm-opt {
+    width: fit-children;
+    min-width: 40px;
+    height: 22px;
+    margin-left: 2px;
+    background-color: #ffffff0a;
+    transition-property: background-color;
+    transition-duration: 0.2s;
+}
+.dmm-opt:first-child { margin-left: 0px; }
+.dmm-opt:hover { background-color: #ffffff18; }
+.dmm-opt-lbl {
+    width: fit-children;
+    margin: 0px 8px 0px 8px;
+    horizontal-align: center;
+    vertical-align: center;
+    font-family: Stratum2 Medium Condensed;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #aeb5bc;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-opt.sel, .dmm-opt.sel:hover { background-color: #4caf6d; }
+.dmm-opt.sel .dmm-opt-lbl { color: #0b0e12; }
+
+/* Another plugin's menu: OPEN › */
+.dmm-go {
+    visibility: collapse;
+    width: fit-children;
+    height: 22px;
+    vertical-align: center;
+    background-color: #ffffff0a;
+    transition-property: background-color;
+    transition-duration: 0.2s;
+}
+.dmm-set.kind-go .dmm-go { visibility: visible; }
+.dmm-go:hover { background-color: #ffffff18; }
+.dmm-go-lbl {
+    width: fit-children;
+    margin: 0px 8px 0px 8px;
+    vertical-align: center;
+    font-family: Stratum2 Mono;
+    font-size: 10px;
+    font-weight: bold;
+    color: #4caf6d;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.dmm-empty {
+    width: 100%;
+    height: 20px;
+    font-family: Stratum2 Regular;
+    font-size: 12.5px;
+    color: #8b939c;
+}
+
+/* ------------------------------------------------------------------ spawns editor */
+
+.dmm-sp-top {
+    width: 100%;
+    height: 56px;
+    flow-children: right;
+}
+.dmm-sp-n {
+    width: 176px;
+    height: 100%;
+    flow-children: right;
+    margin-right: 8px;
+    padding: 0px 12px 0px 12px;
+    background-color: #ffffff07;
+}
+.dmm-sp-logo {
+    width: 26px;
+    height: 26px;
+    vertical-align: center;
+    margin-right: 12px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-texture-size: 52px 52px;
+}
+.dmm-sp-n.ct .dmm-sp-logo { background-image: url("s2r://panorama/images/icons/ui/ct_logo_1c.vsvg"); wash-color: #56a0dd; }
+.dmm-sp-n.t .dmm-sp-logo { background-image: url("s2r://panorama/images/icons/ui/t_logo_1c.vsvg"); wash-color: #f0a531; }
+.dmm-sp-nt {
+    width: fill-parent-flow(1.0);
+    vertical-align: center;
+    flow-children: down;
+}
+.dmm-sp-v {
+    font-family: Stratum2 Medium Condensed;
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 26px;
+    color: #ffffff;
+}
+.dmm-sp-k {
+    font-family: Stratum2 Mono;
+    font-size: 9.5px;
+    letter-spacing: 1.2px;
+    color: #6c747d;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-sp-dirty { margin-right: 0px; }
+
+/* Four a row: 4 x 176 + 3 x 8 = 728 */
+.dmm-sp-acts {
+    width: 100%;
+    height: 40px;
+    flow-children: right;
+    margin-top: 12px;
+}
+.dmm-sp-btn {
+    width: 176px;
+    height: 40px;
+    margin-left: 8px;
+    background-color: #ffffff0a;
+    transition-property: background-color;
+    transition-duration: 0.2s;
+}
+.dmm-sp-btn:first-child { margin-left: 0px; }
+.dmm-sp-btn:hover { background-color: #ffffff18; }
+.dmm-sp-btn.ct { background-color: #56a0dd24; }
+.dmm-sp-btn.ct:hover { background-color: #56a0dd40; }
+.dmm-sp-btn.t { background-color: #f0a53124; }
+.dmm-sp-btn.t:hover { background-color: #f0a53140; }
+.dmm-sp-btn.save { background-color: #4caf6d33; }
+.dmm-sp-btn.save:hover { background-color: #4caf6d55; }
+/* No letter-spacing: it applies after the last character too, so centred text drifts left */
+.dmm-sp-btn-lbl {
+    width: 100%;
+    vertical-align: center;
+    font-family: Stratum2 Medium Condensed;
+    font-size: 14px;
+    font-weight: bold;
+    color: #e7eaee;
+    text-transform: uppercase;
+    text-align: center;
+}
+.dmm-sp-btn.ct .dmm-sp-btn-lbl { color: #a8cff2; }
+.dmm-sp-btn.t .dmm-sp-btn-lbl { color: #f5c46a; }
+
+.dmm-sp-hint {
+    width: 100%;
+    height: 34px;
+    margin-top: 12px;
+    font-family: Stratum2 Regular;
+    font-size: 12.5px;
+    color: #8b939c;
+    white-space: normal;
+}
+
+/* ------------------------------------------------------------------ footer */
+
+.dmm-foot {
+    width: 100%;
+    height: 36px;
+    flow-children: right;
+    padding: 0px 16px 0px 16px;
+    border-top: 1px solid #ffffff0f;
+}
+/* What the last click did: "AK47 is your primary now." */
+.dmm-status {
+    width: fill-parent-flow(1.0);
+    vertical-align: center;
+    font-family: Stratum2 Regular;
+    font-size: 12px;
+    color: #8b939c;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dmm-status.ok { color: #8fd6a5; }
+.dmm-status.warn { color: #ff8a78; }
+.dmm-cmd {
+    width: fit-children;
+    vertical-align: center;
+    margin: 0px 6px 0px 12px;
+    font-family: Stratum2 Mono;
+    font-size: 10px;
+    color: #4caf6d;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dmm-foot-t {
+    width: fit-children;
+    vertical-align: center;
+    font-family: Stratum2 Mono;
+    font-size: 10px;
+    color: #4f565e;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ art */
+
+/* ---- art: generated by hud/tools/gen_deathmatch_menu.py, do not edit by hand ---- */
+.w-ak47 .dmm-t-art { width: 66.4px; height: 24px; background-texture-size: 133px 48px; background-image: url("s2r://panorama/images/icons/equipment/ak47.vsvg"); }
+.w-aug .dmm-t-art { width: 56.9px; height: 24px; background-texture-size: 114px 48px; background-image: url("s2r://panorama/images/icons/equipment/aug.vsvg"); }
+.w-awp .dmm-t-art { width: 82.1px; height: 24px; background-texture-size: 164px 48px; background-image: url("s2r://panorama/images/icons/equipment/awp.vsvg"); }
+.w-bizon .dmm-t-art { width: 67.5px; height: 24px; background-texture-size: 135px 48px; background-image: url("s2r://panorama/images/icons/equipment/bizon.vsvg"); }
+.w-cz75a .dmm-t-art { width: 35.9px; height: 24px; background-texture-size: 72px 48px; background-image: url("s2r://panorama/images/icons/equipment/cz75a.vsvg"); }
+.w-deagle .dmm-t-art { width: 38px; height: 24px; background-texture-size: 76px 48px; background-image: url("s2r://panorama/images/icons/equipment/deagle.vsvg"); }
+.w-elite .dmm-t-art { width: 51.2px; height: 24px; background-texture-size: 102px 48px; background-image: url("s2r://panorama/images/icons/equipment/elite.vsvg"); }
+.w-famas .dmm-t-art { width: 58.3px; height: 24px; background-texture-size: 117px 48px; background-image: url("s2r://panorama/images/icons/equipment/famas.vsvg"); }
+.w-fiveseven .dmm-t-art { width: 29.3px; height: 24px; background-texture-size: 59px 48px; background-image: url("s2r://panorama/images/icons/equipment/fiveseven.vsvg"); }
+.w-g3sg1 .dmm-t-art { width: 70px; height: 24px; background-texture-size: 140px 48px; background-image: url("s2r://panorama/images/icons/equipment/g3sg1.vsvg"); }
+.w-galilar .dmm-t-art { width: 67.7px; height: 24px; background-texture-size: 135px 48px; background-image: url("s2r://panorama/images/icons/equipment/galilar.vsvg"); }
+.w-glock .dmm-t-art { width: 33.7px; height: 24px; background-texture-size: 67px 48px; background-image: url("s2r://panorama/images/icons/equipment/glock.vsvg"); }
+.w-hkp2000 .dmm-t-art { width: 24.1px; height: 24px; background-texture-size: 48px 48px; background-image: url("s2r://panorama/images/icons/equipment/hkp2000.vsvg"); }
+.w-m249 .dmm-t-art { width: 72.5px; height: 24px; background-texture-size: 145px 48px; background-image: url("s2r://panorama/images/icons/equipment/m249.vsvg"); }
+.w-m4a1 .dmm-t-art { width: 59px; height: 24px; background-texture-size: 118px 48px; background-image: url("s2r://panorama/images/icons/equipment/m4a1.vsvg"); }
+.w-m4a1_silencer .dmm-t-art { width: 72.4px; height: 24px; background-texture-size: 145px 48px; background-image: url("s2r://panorama/images/icons/equipment/m4a1_silencer.vsvg"); }
+.w-mac10 .dmm-t-art { width: 33.5px; height: 24px; background-texture-size: 67px 48px; background-image: url("s2r://panorama/images/icons/equipment/mac10.vsvg"); }
+.w-mag7 .dmm-t-art { width: 50.6px; height: 24px; background-texture-size: 101px 48px; background-image: url("s2r://panorama/images/icons/equipment/mag7.vsvg"); }
+.w-mp5sd .dmm-t-art { width: 56.8px; height: 24px; background-texture-size: 114px 48px; background-image: url("s2r://panorama/images/icons/equipment/mp5sd.vsvg"); }
+.w-mp7 .dmm-t-art { width: 36.8px; height: 24px; background-texture-size: 74px 48px; background-image: url("s2r://panorama/images/icons/equipment/mp7.vsvg"); }
+.w-mp9 .dmm-t-art { width: 55.2px; height: 24px; background-texture-size: 110px 48px; background-image: url("s2r://panorama/images/icons/equipment/mp9.vsvg"); }
+.w-negev .dmm-t-art { width: 61.1px; height: 24px; background-texture-size: 122px 48px; background-image: url("s2r://panorama/images/icons/equipment/negev.vsvg"); }
+.w-nova .dmm-t-art { width: 75.3px; height: 24px; background-texture-size: 151px 48px; background-image: url("s2r://panorama/images/icons/equipment/nova.vsvg"); }
+.w-p250 .dmm-t-art { width: 28.3px; height: 24px; background-texture-size: 57px 48px; background-image: url("s2r://panorama/images/icons/equipment/p250.vsvg"); }
+.w-p90 .dmm-t-art { width: 51.3px; height: 24px; background-texture-size: 103px 48px; background-image: url("s2r://panorama/images/icons/equipment/p90.vsvg"); }
+.w-revolver .dmm-t-art { width: 39.4px; height: 24px; background-texture-size: 79px 48px; background-image: url("s2r://panorama/images/icons/equipment/revolver.vsvg"); }
+.w-sawedoff .dmm-t-art { width: 63.6px; height: 24px; background-texture-size: 127px 48px; background-image: url("s2r://panorama/images/icons/equipment/sawedoff.vsvg"); }
+.w-scar20 .dmm-t-art { width: 73.5px; height: 24px; background-texture-size: 147px 48px; background-image: url("s2r://panorama/images/icons/equipment/scar20.vsvg"); }
+.w-sg556 .dmm-t-art { width: 67.3px; height: 24px; background-texture-size: 135px 48px; background-image: url("s2r://panorama/images/icons/equipment/sg556.vsvg"); }
+.w-ssg08 .dmm-t-art { width: 74.7px; height: 24px; background-texture-size: 149px 48px; background-image: url("s2r://panorama/images/icons/equipment/ssg08.vsvg"); }
+.w-tec9 .dmm-t-art { width: 39.3px; height: 24px; background-texture-size: 79px 48px; background-image: url("s2r://panorama/images/icons/equipment/tec9.vsvg"); }
+.w-ump45 .dmm-t-art { width: 62.6px; height: 24px; background-texture-size: 125px 48px; background-image: url("s2r://panorama/images/icons/equipment/ump45.vsvg"); }
+.w-usp_silencer .dmm-t-art { width: 52px; height: 24px; background-texture-size: 104px 48px; background-image: url("s2r://panorama/images/icons/equipment/usp_silencer.vsvg"); }
+.w-xm1014 .dmm-t-art { width: 73.4px; height: 24px; background-texture-size: 147px 48px; background-image: url("s2r://panorama/images/icons/equipment/xm1014.vsvg"); }
+.dmm-u.u-flashbang { width: 15px; background-texture-size: 30px 32px; background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); }
+.dmm-u.u-hegrenade { width: 12.1px; background-texture-size: 24px 32px; background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); }
+.dmm-u.u-smokegrenade { width: 7.5px; background-texture-size: 15px 32px; background-image: url("s2r://panorama/images/icons/equipment/smokegrenade.vsvg"); }
+.dmm-u.u-molotov { width: 11px; background-texture-size: 22px 32px; background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); }
+.dmm-u.u-incgrenade { width: 7.5px; background-texture-size: 15px 32px; background-image: url("s2r://panorama/images/icons/equipment/incgrenade.vsvg"); }
+.dmm-u.u-decoy { width: 15px; background-texture-size: 30px 32px; background-image: url("s2r://panorama/images/icons/equipment/decoy.vsvg"); }
+.dmm-u.u-healthshot { width: 22px; background-texture-size: 44px 32px; background-image: url("s2r://panorama/images/icons/equipment/healthshot.vsvg"); }
+.dmm-u.u-taser { width: 20.7px; background-texture-size: 41px 32px; background-image: url("s2r://panorama/images/icons/equipment/taser.vsvg"); }
+.dmm-u.u-knife { width: 38.4px; background-texture-size: 77px 32px; background-image: url("s2r://panorama/images/icons/equipment/knife.vsvg"); }
+/* ---- end of generated art ---- */

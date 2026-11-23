@@ -60,111 +60,26 @@ namespace Deathmatch
             if (!playerData.TryGetValue(player.Slot, out var data))
                 return;
 
-            bool IsVIP = AdminManager.PlayerHasPermissions(player, Config.PlayersSettings.VIPFlag);
-            var pawn = player.PlayerPawn.Value;
-            if (ActiveMode.PrimaryWeapons.Contains(weaponName))
+            // The pick itself (limits, saved choice, weapons in hand) is shared with the menu's tiles (Functions/HudMenus.cs)
+            string localizerWeaponName = Localizer[weaponName];
+            switch (PickWeapon(player, data, weaponName))
             {
-                string localizerWeaponName = Localizer[weaponName];
-                if (data.PrimaryWeapon.TryGetValue(ActiveCustomMode, out var weapon) && weaponName == weapon)
-                {
-                    if (!string.IsNullOrEmpty(Config.SoundSettings.CantEquipSound))
-                        player.ExecuteClientCommand("play " + Config.SoundSettings.CantEquipSound);
+                case WeaponPick.Primary:
+                    info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.PrimaryWeaponSet", localizerWeaponName]}");
+                    break;
+                case WeaponPick.Secondary:
+                    info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.SecondaryWeaponSet", localizerWeaponName]}");
+                    break;
+                case WeaponPick.AlreadySet:
                     info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponsIsAlreadySet", localizerWeaponName]}");
-                    return;
-                }
-                if (CheckIsWeaponRestricted(weaponName, IsVIP, player.Team, ActiveMode.PrimaryWeapons, ActiveCustomMode, true))
-                {
-                    if (!string.IsNullOrEmpty(Config.SoundSettings.CantEquipSound))
-                        player.ExecuteClientCommand("play " + Config.SoundSettings.CantEquipSound);
-
+                    break;
+                case WeaponPick.Restricted:
                     (int NonVIP, int VIP) restrictInfo = GetRestrictData(weaponName, player.Team);
                     info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponIsRestricted", localizerWeaponName, GetWeaponRestrictLozalizer(restrictInfo.NonVIP), GetWeaponRestrictLozalizer(restrictInfo.VIP)]}");
-                    return;
-                }
-
-                data.PrimaryWeapon[ActiveCustomMode] = weaponName;
-                info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.PrimaryWeaponSet", localizerWeaponName]}");
-
-                var primaryWeapon = pawn?.GetWeaponFromSlot(gear_slot_t.GEAR_SLOT_RIFLE);
-                if (player.PawnIsAlive)
-                {
-                    if (primaryWeapon == null)
-                    {
-                        player.GiveNamedItem(weaponName);
-                    }
-                    else if (Config.Gameplay.SwitchWeapons)
-                    {
-                        var secondaryWeapon = pawn?.GetWeaponFromSlot(gear_slot_t.GEAR_SLOT_PISTOL);
-                        player.RemoveWeapons();
-                        player.GiveNamedItem("weapon_knife");
-                        player.GiveNamedItem(weaponName);
-                        if (secondaryWeapon != null)
-                            player.GiveNamedItem(secondaryWeapon.DesignerName);
-
-                        if (ActiveMode.Armor != 0)
-                        {
-                            var armor = ActiveMode.Armor == 1 ? "item_kevlar" : "item_assaultsuit";
-                            player.GiveNamedItem(armor);
-                        }
-                    }
-                }
-                return;
-            }
-            else if (ActiveMode.SecondaryWeapons.Contains(weaponName))
-            {
-                string localizerWeaponName = Localizer[weaponName];
-                if (data.SecondaryWeapon.TryGetValue(ActiveCustomMode, out var weapon) && weaponName == weapon)
-                {
-                    if (!string.IsNullOrEmpty(Config.SoundSettings.CantEquipSound))
-                        player.ExecuteClientCommand("play " + Config.SoundSettings.CantEquipSound);
-                    info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponsIsAlreadySet", localizerWeaponName]}");
-                    return;
-                }
-                if (CheckIsWeaponRestricted(weaponName, IsVIP, player.Team, ActiveMode.SecondaryWeapons, ActiveCustomMode, false))
-                {
-                    if (!string.IsNullOrEmpty(Config.SoundSettings.CantEquipSound))
-                        player.ExecuteClientCommand("play " + Config.SoundSettings.CantEquipSound);
-
-                    (int NonVIP, int VIP) restrictInfo = GetRestrictData(weaponName, player.Team);
-                    info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponIsRestricted", localizerWeaponName, GetWeaponRestrictLozalizer(restrictInfo.NonVIP), GetWeaponRestrictLozalizer(restrictInfo.VIP)]}");
-                    return;
-                }
-
-                data.SecondaryWeapon[ActiveCustomMode] = weaponName;
-                info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.SecondaryWeaponSet", localizerWeaponName]}");
-
-                var secondaryWeapon = pawn?.GetWeaponFromSlot(gear_slot_t.GEAR_SLOT_PISTOL);
-                if (player.PawnIsAlive)
-                {
-                    if (secondaryWeapon == null)
-                    {
-                        player.GiveNamedItem(weaponName);
-                    }
-                    else if (Config.Gameplay.SwitchWeapons)
-                    {
-                        var primaryWeapon = pawn?.GetWeaponFromSlot(gear_slot_t.GEAR_SLOT_RIFLE);
-                        player.RemoveWeapons();
-                        player.GiveNamedItem("weapon_knife");
-                        player.GiveNamedItem(weaponName);
-                        if (primaryWeapon != null)
-                            player.GiveNamedItem(primaryWeapon.DesignerName);
-
-                        if (ActiveMode.Armor != 0)
-                        {
-                            var armor = ActiveMode.Armor == 1 ? "item_kevlar" : "item_assaultsuit";
-                            player.GiveNamedItem(armor);
-                        }
-                    }
-                }
-                return;
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(Config.SoundSettings.CantEquipSound))
-                    player.ExecuteClientCommand("play " + Config.SoundSettings.CantEquipSound);
-                string localizerWeaponName = Localizer[weaponName];
-                info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponIsDisabled", localizerWeaponName]}");
-                return;
+                    break;
+                default:
+                    info.ReplyToCommand($"{Localizer["Chat.Prefix"]} {Localizer["Chat.WeaponIsDisabled", localizerWeaponName]}");
+                    break;
             }
         }
 
